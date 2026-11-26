@@ -1,0 +1,55 @@
+name: caelo-action
+description: Run the Caelo security scanner in CI and fail the job when it finds exposed secrets or open databases.
+author: Irth Labs
+
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  path:
+    description: Folder to scan. Defaults to the repository root.
+    required: false
+    default: "."
+  fail-on:
+    description: >
+      When to fail the job. "any" (the default) fails the job on any Caelo
+      finding, using Caelo's own non-zero exit code. "never" runs the scan and
+      prints the report but always leaves the job green.
+    required: false
+    default: "any"
+  node-version:
+    description: Node.js version used to run Caelo via npx.
+    required: false
+    default: "20"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Run Caelo scan
+      shell: bash
+      env:
+        CAELO_PATH: ${{ inputs.path }}
+        CAELO_FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        status=0
+        echo "Running Caelo on path: $CAELO_PATH"
+        npx -y caelo "$CAELO_PATH" || status=$?
+
+        if [ "$status" -eq 0 ]; then
+          echo "Caelo finished with no blocking findings."
+          exit 0
+        fi
+
+        if [ "$CAELO_FAIL_ON" = "never" ]; then
+          echo "Caelo reported findings (exit code $status). fail-on is set to never, so the job stays green."
+          exit 0
+        fi
+
+        echo "Caelo reported findings (exit code $status). Failing the job."
+        exit "$status"
