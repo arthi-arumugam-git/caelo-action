@@ -3,7 +3,7 @@ description: Run the Caelo security scanner in CI and fail the job when it finds
 author: Irth Labs
 
 branding:
-  icon: shield
+  icon: eye
   color: green
 
 inputs:
